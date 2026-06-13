@@ -1,0 +1,20 @@
+{
+  "name": "memory-card-game",
+  "version": "1.0.0",
+  "description": "休闲记忆卡牌H5游戏",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "backend": "node server.js",
+    "frontend": "npx http-server ./frontend -p 3718 -c-1 --cors",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\""
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "http-server": "^14.1.1"
+  }
+}

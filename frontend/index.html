@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>记忆卡牌 - 休闲益智游戏</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <div id="startScreen" class="screen active">
+      <div class="start-content">
+        <div class="game-logo">
+          <div class="logo-cards">
+            <span class="logo-card">🃏</span>
+            <span class="logo-card flip">🎴</span>
+          </div>
+        </div>
+        <h1 class="game-title">记忆卡牌</h1>
+        <p class="game-subtitle">翻开卡牌，寻找相同图案配对</p>
+        
+        <div class="level-select">
+          <h3>选择关卡</h3>
+          <div id="levelList" class="level-grid"></div>
+        </div>
+        
+        <div class="start-actions">
+          <button id="quickStartBtn" class="btn btn-primary btn-large">快速开始</button>
+          <button id="showRecordsBtn" class="btn btn-secondary">历史记录</button>
+        </div>
+      </div>
+    </div>
+    
+    <div id="gameScreen" class="screen">
+      <div class="game-header">
+        <div class="header-top">
+          <button id="backBtn" class="btn-icon" title="返回">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 18l-6-6 6-6"/>
+            </svg>
+          </button>
+          <div class="level-info">
+            <span class="level-badge" id="currentLevelBadge">第 1 关</span>
+            <span class="level-name" id="currentLevelName">新手入门</span>
+          </div>
+          <button id="menuBtn" class="btn-icon" title="菜单">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="1"/>
+              <circle cx="19" cy="12" r="1"/>
+              <circle cx="5" cy="12" r="1"/>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="stats-bar">
+          <div class="stat-item">
+            <span class="stat-icon">⏱️</span>
+            <span class="stat-label">用时</span>
+            <span class="stat-value" id="timerDisplay">00:00</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-icon">👆</span>
+            <span class="stat-label">步数</span>
+            <span class="stat-value" id="movesDisplay">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-icon">✅</span>
+            <span class="stat-label">配对</span>
+            <span class="stat-value" id="matchDisplay">0/0</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="game-board-wrapper">
+        <div id="gameBoard" class="game-board"></div>
+      </div>
+      
+      <div class="game-footer">
+        <div class="action-row">
+          <button id="hintBtn" class="btn-action">
+            <span class="action-icon">💡</span>
+            <span class="action-label">提示</span>
+            <span class="action-count" id="hintCount">3</span>
+          </button>
+          <button id="resetBtn" class="btn-action">
+            <span class="action-icon">🔄</span>
+            <span class="action-label">重置</span>
+          </button>
+          <button id="pauseBtn" class="btn-action">
+            <span class="action-icon">⏸️</span>
+            <span class="action-label">暂停</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <div id="winScreen" class="screen">
+      <div class="win-content">
+        <div class="win-animation">
+          <div class="confetti-container" id="confettiContainer"></div>
+        </div>
+        <div class="trophy-icon">🏆</div>
+        <h2 class="win-title">恭喜通关！</h2>
+        <div class="win-stats">
+          <div class="win-stat-card">
+            <span class="win-stat-icon">⏱️</span>
+            <span class="win-stat-label">用时</span>
+            <span class="win-stat-value" id="winTime">00:00</span>
+          </div>
+          <div class="win-stat-card">
+            <span class="win-stat-icon">👆</span>
+            <span class="win-stat-label">步数</span>
+            <span class="win-stat-value" id="winMoves">0</span>
+          </div>
+          <div class="win-stat-card highlight">
+            <span class="win-stat-icon">⭐</span>
+            <span class="win-stat-label">得分</span>
+            <span class="win-stat-value" id="winScore">0</span>
+          </div>
+        </div>
+        <div class="win-actions">
+          <button id="nextLevelBtn" class="btn btn-primary btn-large">下一关</button>
+          <button id="replayBtn" class="btn btn-secondary">再玩一次</button>
+          <button id="backHomeBtn" class="btn btn-ghost">返回主页</button>
+        </div>
+      </div>
+    </div>
+    
+    <div id="recordsScreen" class="screen">
+      <div class="records-header">
+        <button id="recordsBackBtn" class="btn-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+        <h2>历史记录</h2>
+        <button id="clearRecordsBtn" class="btn-icon danger" title="清空记录">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
+          </svg>
+        </button>
+      </div>
+      <div id="recordsList" class="records-list"></div>
+    </div>
+    
+    <div id="pauseModal" class="modal">
+      <div class="modal-content">
+        <h3>游戏暂停</h3>
+        <div class="modal-actions">
+          <button id="resumeBtn" class="btn btn-primary">继续游戏</button>
+          <button id="restartBtn" class="btn btn-secondary">重新开始</button>
+          <button id="exitBtn" class="btn btn-ghost">退出本局</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="toast" class="toast"></div>
+  
+  <script src="app.js"></script>
+</body>
+</html>
