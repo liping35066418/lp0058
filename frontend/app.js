@@ -19,7 +19,9 @@ const appState = {
   isPaused: false,
   elapsedSeconds: 0,
   unlockedLevels: 1,
-  bestRecords: []
+  bestRecords: [],
+  combo: 0,
+  maxCombo: 0
 };
 
 function $(id) {
@@ -43,6 +45,23 @@ function formatTime(seconds) {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+function updateComboDisplay() {
+  const comboBar = $('comboBar');
+  const comboCount = $('comboCount');
+  const comboMultiplier = $('comboMultiplier');
+  
+  if (appState.combo > 0) {
+    comboBar.style.display = 'flex';
+    comboCount.textContent = appState.combo;
+    comboMultiplier.textContent = `x${appState.combo}`;
+    comboBar.classList.remove('combo-pulse');
+    void comboBar.offsetWidth;
+    comboBar.classList.add('combo-pulse');
+  } else {
+    comboBar.style.display = 'none';
+  }
 }
 
 function saveToStorage(key, data) {
@@ -179,6 +198,8 @@ function setupGame(gameData) {
   appState.matchedPairs = 0;
   appState.elapsedSeconds = 0;
   appState.isPaused = false;
+  appState.combo = 0;
+  appState.maxCombo = 0;
   
   $('currentLevelBadge').textContent = `第 ${gameData.level} 关`;
   $('currentLevelName').textContent = gameData.levelName;
@@ -188,6 +209,7 @@ function setupGame(gameData) {
   $('hintCount').textContent = gameData.maxHints;
   $('hintBtn').disabled = false;
   
+  updateComboDisplay();
   renderBoard();
   startTimer();
 }
@@ -251,6 +273,14 @@ async function onCardClick(cardId) {
       appState.matchedPairs = result.matchedPairs;
       $('matchDisplay').textContent = `${appState.matchedPairs}/${appState.pairs}`;
       
+      if (result.combo !== undefined) {
+        appState.combo = result.combo;
+        if (appState.combo > appState.maxCombo) {
+          appState.maxCombo = appState.combo;
+        }
+        updateComboDisplay();
+      }
+      
       if (result.status === 'won') {
         setTimeout(() => handleWin(result), 600);
       }
@@ -262,6 +292,9 @@ async function onCardClick(cardId) {
       setTimeout(() => {
         result.wrongCards.forEach(id => unflipCard(id));
       }, 1200);
+      
+      appState.combo = 0;
+      updateComboDisplay();
     }
   } catch (e) {
     console.error('翻牌失败:', e);
@@ -409,21 +442,43 @@ function exitGame() {
   loadLevels();
 }
 
-function handleWin(result) {
+async function handleWin(result) {
   stopTimer();
+  
+  const finalScore = result.score;
+  const maxCombo = result.maxCombo || appState.maxCombo;
   
   $('winTime').textContent = formatTime(result.elapsedTime);
   $('winMoves').textContent = appState.moves;
-  $('winScore').textContent = result.score;
+  $('winMaxCombo').textContent = maxCombo;
+  $('winScore').textContent = finalScore;
   
   const record = {
     level: appState.level,
     time: result.elapsedTime,
     moves: appState.moves,
-    score: result.score,
+    score: finalScore,
+    maxCombo: maxCombo,
     date: new Date().toISOString()
   };
   saveRecord(record);
+  
+  try {
+    const saveResult = await apiRequest('/score/save', 'POST', {
+      playerId: 'guest_' + Math.random().toString(36).slice(2, 8),
+      record: {
+        ...record,
+        playerName: '匿名玩家'
+      }
+    });
+    
+    if (saveResult && saveResult.rank) {
+      $('winRankNumber').textContent = saveResult.rank;
+      $('winRank').style.display = 'block';
+    }
+  } catch (e) {
+    console.warn('保存分数到后端失败:', e);
+  }
   
   createConfetti();
   showScreen('winScreen');
@@ -487,6 +542,10 @@ function renderRecords() {
           <span>步数</span>
           <span>${record.moves}</span>
         </div>
+        <div class="record-stat">
+          <span>连击</span>
+          <span>${record.maxCombo || 0}</span>
+        </div>
         <span class="record-score">${record.score}</span>
       </div>
     `;
@@ -503,12 +562,106 @@ function clearRecords() {
   }
 }
 
+let currentLeaderboardLevel = 1;
+
+async function showLeaderboard() {
+  renderLeaderboardTabs();
+  await loadLeaderboard(currentLeaderboardLevel);
+  showScreen('leaderboardScreen');
+}
+
+function renderLeaderboardTabs() {
+  const container = $('leaderboardLevelTabs');
+  container.innerHTML = '';
+  
+  for (let i = 1; i <= 6; i++) {
+    const tab = document.createElement('button');
+    tab.className = `level-tab${i === currentLeaderboardLevel ? ' active' : ''}`;
+    tab.textContent = `第${i}关`;
+    tab.addEventListener('click', () => {
+      currentLeaderboardLevel = i;
+      renderLeaderboardTabs();
+      loadLeaderboard(i);
+    });
+    container.appendChild(tab);
+  }
+}
+
+async function loadLeaderboard(level) {
+  const container = $('leaderboardList');
+  container.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-state-icon">⏳</div>
+      <div class="empty-state-text">加载中...</div>
+    </div>
+  `;
+  
+  try {
+    const result = await apiRequest(`/score/top?level=${level}&limit=10`);
+    
+    if (!result.scores || result.scores.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">🏆</div>
+          <div class="empty-state-text">暂无排行记录</div>
+          <div class="empty-state-hint">通关后即可上榜</div>
+        </div>
+      `;
+      return;
+    }
+    
+    container.innerHTML = '';
+    
+    result.scores.forEach((score, index) => {
+      const item = document.createElement('div');
+      item.className = `leaderboard-item top-${index + 1}`;
+      
+      const date = new Date(score.date || score.createdAt);
+      const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
+      
+      let rankIcon = '';
+      if (index === 0) rankIcon = '🥇';
+      else if (index === 1) rankIcon = '🥈';
+      else if (index === 2) rankIcon = '🥉';
+      
+      item.innerHTML = `
+        <div class="leaderboard-rank">
+          <span class="leaderboard-rank-num">${rankIcon || (index + 1)}</span>
+        </div>
+        <div class="leaderboard-info">
+          <span class="leaderboard-name">${score.playerName || '匿名玩家'}</span>
+          <div class="leaderboard-stats">
+            <span>⏱️ ${formatTime(score.time || 0)}</span>
+            <span>👆 ${score.moves || 0}步</span>
+            <span>🔥 ${score.maxCombo || 0}连</span>
+            <span>📅 ${dateStr}</span>
+          </div>
+        </div>
+        <div class="leaderboard-score">${score.score}</div>
+      `;
+      
+      container.appendChild(item);
+    });
+  } catch (e) {
+    console.error('加载排行榜失败:', e);
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">❌</div>
+        <div class="empty-state-text">加载失败</div>
+        <div class="empty-state-hint">请检查后端服务</div>
+      </div>
+    `;
+  }
+}
+
 function bindEvents() {
   $('quickStartBtn').addEventListener('click', () => startGame(appState.unlockedLevels));
   $('showRecordsBtn').addEventListener('click', () => {
     renderRecords();
     showScreen('recordsScreen');
   });
+  $('showLeaderboardBtn').addEventListener('click', showLeaderboard);
+  $('leaderboardBackBtn').addEventListener('click', () => showScreen('startScreen'));
   
   $('backBtn').addEventListener('click', () => {
     pauseGame();

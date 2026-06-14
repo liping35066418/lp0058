@@ -1,8 +1,11 @@
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = 9718;
+const SCORES_FILE = path.join(__dirname, 'scores.json');
 
 app.use(cors());
 app.use(express.json());
@@ -45,6 +48,58 @@ function generateCards(levelConfig) {
 
 const gameSessions = new Map();
 
+function loadScores() {
+  try {
+    if (fs.existsSync(SCORES_FILE)) {
+      const data = fs.readFileSync(SCORES_FILE, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch (e) {
+    console.error('读取分数文件失败:', e);
+  }
+  return {};
+}
+
+function saveScores(scores) {
+  try {
+    fs.writeFileSync(SCORES_FILE, JSON.stringify(scores, null, 2), 'utf-8');
+    return true;
+  } catch (e) {
+    console.error('保存分数文件失败:', e);
+    return false;
+  }
+}
+
+function getTopScores(level, limit = 10) {
+  const allScores = loadScores();
+  const levelScores = allScores[level] || [];
+  return levelScores
+    .sort((a, b) => b.score - a.score || a.time - b.time)
+    .slice(0, limit);
+}
+
+function insertScore(level, record) {
+  const allScores = loadScores();
+  if (!allScores[level]) {
+    allScores[level] = [];
+  }
+  
+  const entry = {
+    ...record,
+    id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
+    createdAt: Date.now()
+  };
+  
+  allScores[level].push(entry);
+  allScores[level].sort((a, b) => b.score - a.score || a.time - b.time);
+  
+  const rank = allScores[level].findIndex(s => s.id === entry.id) + 1;
+  
+  saveScores(allScores);
+  
+  return { rank, total: allScores[level].length, entry };
+}
+
 app.get('/api/levels', (req, res) => {
   res.json(LEVEL_CONFIG);
 });
@@ -74,7 +129,11 @@ app.post('/api/game/start', (req, res) => {
     hintsUsed: 0,
     maxHints: Math.max(1, Math.floor(config.pairs / 4)),
     status: 'playing',
-    score: 0
+    score: 0,
+    combo: 0,
+    maxCombo: 0,
+    comboBonus: 0,
+    basePairScore: 50
   };
   
   gameSessions.set(sessionId, session);
@@ -124,7 +183,8 @@ app.post('/api/game/flip', (req, res) => {
     isLocked: false,
     isMatch: null,
     moves: session.moves,
-    matchedPairs: session.matchedPairs
+    matchedPairs: session.matchedPairs,
+    combo: session.combo
   };
   
   if (!session.firstCard) {
@@ -138,9 +198,21 @@ app.post('/api/game/flip', (req, res) => {
       session.firstCard.isMatched = true;
       session.secondCard.isMatched = true;
       session.matchedPairs++;
+      
+      session.combo++;
+      if (session.combo > session.maxCombo) {
+        session.maxCombo = session.combo;
+      }
+      
+      const pairScore = session.basePairScore * session.combo;
+      session.comboBonus += pairScore;
+      session.score += pairScore;
+      
       result.isMatch = true;
       result.matchedPairs = session.matchedPairs;
       result.matchedCards = [session.firstCard.id, session.secondCard.id];
+      result.combo = session.combo;
+      result.pairScore = pairScore;
       
       session.firstCard = null;
       session.secondCard = null;
@@ -151,15 +223,20 @@ app.post('/api/game/flip', (req, res) => {
         const timeBonus = Math.max(0, 1000 - session.elapsedTime * 2);
         const moveBonus = Math.max(0, 500 - (session.moves - session.pairs) * 10);
         const hintPenalty = session.hintsUsed * 50;
-        session.score = session.level * 100 + timeBonus + moveBonus - hintPenalty;
+        const levelBase = session.level * 100;
+        session.score = levelBase + timeBonus + moveBonus + session.comboBonus - hintPenalty;
         session.score = Math.max(100, session.score);
         result.status = 'won';
         result.elapsedTime = session.elapsedTime;
         result.score = session.score;
         result.totalPairs = session.pairs;
+        result.maxCombo = session.maxCombo;
+        result.comboBonus = session.comboBonus;
       }
     } else {
       result.isMatch = false;
+      session.combo = 0;
+      result.combo = 0;
       session.isLocked = true;
       result.wrongCards = [session.firstCard.id, session.secondCard.id];
       
@@ -246,6 +323,9 @@ app.post('/api/game/reset', (req, res) => {
   session.hintsUsed = 0;
   session.status = 'playing';
   session.score = 0;
+  session.combo = 0;
+  session.maxCombo = 0;
+  session.comboBonus = 0;
   
   res.json({
     sessionId,
@@ -281,10 +361,42 @@ app.post('/api/game/time', (req, res) => {
 
 app.post('/api/score/save', (req, res) => {
   const { playerId, record } = req.body;
-  if (!playerId || !record) {
+  if (!playerId || !record || record.level === undefined || record.score === undefined) {
     return res.status(400).json({ error: '缺少必要参数' });
   }
-  res.json({ saved: true });
+  
+  const scoreRecord = {
+    playerId: playerId || 'guest',
+    playerName: record.playerName || '匿名玩家',
+    level: record.level,
+    score: record.score,
+    time: record.time || 0,
+    moves: record.moves || 0,
+    maxCombo: record.maxCombo || 0,
+    date: record.date || new Date().toISOString()
+  };
+  
+  const result = insertScore(record.level, scoreRecord);
+  
+  res.json({
+    saved: true,
+    rank: result.rank,
+    total: result.total,
+    isNewRecord: result.rank === 1
+  });
+});
+
+app.get('/api/score/top', (req, res) => {
+  const level = parseInt(req.query.level) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  
+  const topScores = getTopScores(level, limit);
+  
+  res.json({
+    level,
+    total: topScores.length,
+    scores: topScores
+  });
 });
 
 app.listen(PORT, () => {

@@ -28,7 +28,10 @@
         
         <div class="start-actions">
           <button id="quickStartBtn" class="btn btn-primary btn-large">快速开始</button>
-          <button id="showRecordsBtn" class="btn btn-secondary">历史记录</button>
+          <div class="action-row-buttons">
+            <button id="showLeaderboardBtn" class="btn btn-secondary">🏆 排行榜</button>
+            <button id="showRecordsBtn" class="btn btn-secondary">📋 历史记录</button>
+          </div>
         </div>
       </div>
     </div>
@@ -71,6 +74,13 @@
             <span class="stat-value" id="matchDisplay">0/0</span>
           </div>
         </div>
+        
+        <div class="combo-bar" id="comboBar" style="display: none;">
+          <span class="combo-icon">🔥</span>
+          <span class="combo-text">连击</span>
+          <span class="combo-count" id="comboCount">0</span>
+          <span class="combo-multiplier" id="comboMultiplier">x1</span>
+        </div>
       </div>
       
       <div class="game-board-wrapper">
@@ -103,6 +113,10 @@
         </div>
         <div class="trophy-icon">🏆</div>
         <h2 class="win-title">恭喜通关！</h2>
+        <div class="win-rank" id="winRank" style="display: none;">
+          <span class="win-rank-text">🏆 本次排名第 <strong id="winRankNumber">0</strong> 名</span>
+        </div>
+        
         <div class="win-stats">
           <div class="win-stat-card">
             <span class="win-stat-icon">⏱️</span>
@@ -113,6 +127,11 @@
             <span class="win-stat-icon">👆</span>
             <span class="win-stat-label">步数</span>
             <span class="win-stat-value" id="winMoves">0</span>
+          </div>
+          <div class="win-stat-card">
+            <span class="win-stat-icon">🔥</span>
+            <span class="win-stat-label">最大连击</span>
+            <span class="win-stat-value" id="winMaxCombo">0</span>
           </div>
           <div class="win-stat-card highlight">
             <span class="win-stat-icon">⭐</span>
@@ -144,6 +163,24 @@
         </button>
       </div>
       <div id="recordsList" class="records-list"></div>
+    </div>
+    
+    <div id="leaderboardScreen" class="screen">
+      <div class="records-header">
+        <button id="leaderboardBackBtn" class="btn-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+        <h2>排行榜</h2>
+        <div style="width: 44px;"></div>
+      </div>
+      
+      <div class="leaderboard-levels">
+        <div id="leaderboardLevelTabs" class="level-tabs"></div>
+      </div>
+      
+      <div id="leaderboardList" class="leaderboard-list"></div>
     </div>
     
     <div id="pauseModal" class="modal">

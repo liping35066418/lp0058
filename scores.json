@@ -1,0 +1,76 @@
+{
+  "1": [
+    {
+      "playerId": "test_combo_player",
+      "playerName": "连击测试玩家",
+      "level": 1,
+      "score": 2100,
+      "time": 0,
+      "moves": 4,
+      "maxCombo": 4,
+      "date": "2026-06-14T14:09:35.947Z",
+      "id": "1781446175948io9g",
+      "createdAt": 1781446175948
+    },
+    {
+      "playerId": "test_player_004",
+      "playerName": "玩家4",
+      "level": 1,
+      "score": 1997,
+      "time": 80,
+      "moves": 13,
+      "maxCombo": 6,
+      "date": "2026-06-14T10:00:00.000Z",
+      "id": "17814459681792xcf",
+      "createdAt": 1781445968179
+    },
+    {
+      "playerId": "test_player_003",
+      "playerName": "玩家3",
+      "level": 1,
+      "score": 1861,
+      "time": 87,
+      "moves": 8,
+      "maxCombo": 2,
+      "date": "2026-06-14T10:00:00.000Z",
+      "id": "17814459681431uu3",
+      "createdAt": 1781445968143
+    },
+    {
+      "playerId": "test_player_002",
+      "playerName": "玩家2",
+      "level": 1,
+      "score": 1797,
+      "time": 31,
+      "moves": 15,
+      "maxCombo": 2,
+      "date": "2026-06-14T10:00:00.000Z",
+      "id": "1781445968094wfl5",
+      "createdAt": 1781445968094
+    },
+    {
+      "playerId": "test_player_001",
+      "playerName": "测试玩家",
+      "level": 1,
+      "score": 1500,
+      "time": 45,
+      "moves": 8,
+      "maxCombo": 4,
+      "date": "2026-06-14T10:00:00.000Z",
+      "id": "1781445959279hkpr",
+      "createdAt": 1781445959279
+    },
+    {
+      "playerId": "test_player_005",
+      "playerName": "玩家5",
+      "level": 1,
+      "score": 1470,
+      "time": 35,
+      "moves": 17,
+      "maxCombo": 3,
+      "date": "2026-06-14T10:00:00.000Z",
+      "id": "17814459682232lxm",
+      "createdAt": 1781445968223
+    }
+  ]
+}
