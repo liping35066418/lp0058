@@ -161,7 +161,6 @@ app.post('/api/game/flip', (req, res) => {
     } else {
       result.isMatch = false;
       session.isLocked = true;
-      result.isLocked = true;
       result.wrongCards = [session.firstCard.id, session.secondCard.id];
       
       setTimeout(() => {
